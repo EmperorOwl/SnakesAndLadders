@@ -54,19 +54,13 @@ async def finish(interaction: discord.Interaction) -> None:
 @bot.command(name='sync', description="Sync the bot's slash commands.")
 @commands.guild_only()
 @commands.is_owner()
-async def sync(context: commands.Context, location: str = 'this guild') -> None:
+async def sync(context: commands.Context) -> None:
     """ Syncs the bot's slash commands with the Discord API. """
-    if location == 'this guild':
-        synced = await bot.tree.sync(guild=context.guild)
-    elif location == 'global':
-        synced = await bot.tree.sync()
-    else:
-        await context.send("Invalid location. Use `this guild` or `global`.")
-        return
+    synced = await bot.tree.sync()
     if not synced:
-        await context.send(f"Failed to sync any commands to {location}.")
+        await context.send("Failed to sync any commands.")
     else:
-        await context.send(f"Synced the following commands to {location}:\n" +
+        await context.send(f"Synced the following commands:\n" +
                            ', '.join([f"`{cmd.name}`" for cmd in synced]))
 
 
