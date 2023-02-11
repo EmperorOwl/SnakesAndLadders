@@ -2,9 +2,10 @@
 
 __author__ = "Ray Lin"
 __date__ = "15/11/2022"
-__modified__ = "14/12/2022"
+__modified__ = "11/02/2023"
 
 import os
+import json
 import time
 import discord
 from discord.ext import commands
@@ -13,65 +14,69 @@ from datetime import datetime
 from game import GameAlreadyStarted
 from discord_game import DiscordGame
 
-bot = commands.Bot(command_prefix=commands.when_mentioned,
-                   intents=discord.Intents.default())
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned,
+    intents=discord.Intents.default()
+)
 
 
-@bot.tree.command(name='play', description="Start a game of Snakes & Ladders!")
-async def play(interaction: discord.Interaction) -> None:
+@bot.tree.command()
+async def play(itx: discord.Interaction) -> None:
     """ Starts a game of Snakes & Ladders. """
     try:
-        await DiscordGame(interaction).send_board(
+        await DiscordGame(itx).send_board(
             title="Welcome to Snakes & Ladders",
             description="Hit the button below to join!"
         )
     except GameAlreadyStarted:
-        await interaction.response.send_message(
-            f"{interaction.user.mention}! Only one game per channel. "
+        await itx.response.send_message(
+            f"{itx.user.mention}! Only one game per channel. "
             f"Please `/finish` your current game."
         )
 
 
-@bot.tree.command(name='ping', description="Check the ping.")
-async def ping(interaction: discord.Interaction) -> None:
+@bot.tree.command()
+async def ping(itx: discord.Interaction) -> None:
     """ Responds with the time it takes to send one message. """
     start = time.perf_counter()
-    await interaction.response.send_message("Pinging...")
+    await itx.response.send_message("Pinging...")
     end = time.perf_counter()
-    await interaction.edit_original_response(
+    await itx.edit_original_response(
         content="Pong! {:.2f}ms".format((end - start) * 1000)
     )
 
 
-@bot.tree.command(name='finish', description="Exit the current game.")
-async def finish(interaction: discord.Interaction) -> None:
-    """ Exits the current game by deleting the board. """
-    os.remove(f'boards/{interaction.channel_id}.png')
-    await interaction.response.send_message("Game Exited. Use `/play` to start "
-                                            "a new one!")
+@bot.tree.command()
+async def finish(itx: discord.Interaction) -> None:
+    """ Exits the current game. """
+    os.remove(f'boards/{itx.channel_id}.png')
+    await itx.response.send_message(
+        "Game Exited. Use `/play` to start a new one!"
+    )
 
 
 @bot.command(name='sync', description="Sync the bot's slash commands.")
 @commands.guild_only()
 @commands.is_owner()
-async def sync(context: commands.Context) -> None:
+async def sync(ctx: commands.Context) -> None:
     """ Syncs the bot's slash commands with the Discord API. """
     synced = await bot.tree.sync()
     if not synced:
-        await context.send("Failed to sync any commands.")
+        await ctx.send("Failed to sync any commands.")
     else:
-        await context.send(f"Synced the following commands:\n" +
-                           ', '.join([f"`{cmd.name}`" for cmd in synced]))
+        await ctx.send(f"Synced the following commands:\n" +
+                       ', '.join([f"`{cmd.name}`" for cmd in synced]))
 
 
 @bot.event
 async def on_ready():
     """ Prints a message to indicate bot is online. """
-    bot_start = datetime.now().strftime('%H:%M')
-    print(f"Logged in as {bot.user.name} - {bot.user.id} - {bot_start}")
+    print(f"Logged in as {bot.user.name} - {bot.user.id} - "
+          f"{datetime.now().strftime('%H:%M')}")
     # Removes all boards.
     for board in os.listdir('boards'):
         os.remove(f'boards/{board}')
 
 
-bot.run(os.environ['DISCORD_BOT_TOKEN'])
+with open('config.json', 'r') as f:
+    bot.run(token=json.load(f)['token'], reconnect=True)
